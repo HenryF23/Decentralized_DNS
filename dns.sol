@@ -1,19 +1,21 @@
 pragma solidity >=0.6.0 <0.8.0;
 
+interface reverse_dns {
+    function getRecord(uint32 ip) external view returns (bytes32);
+
+    function insertRecord(uint32 ip, bytes32 domain) external;
+}
+
 contract dns {
-    struct ip_data {
+    struct record {
         address owner;
         uint32 IP_address;
         bool initialized; // used to track if this key exist in the map
     }
 
-    struct domain_data {
-        bytes32 domain;
-        bool initialized; // used to track if this key exist in the map
-    }
-
-    mapping (bytes32 => ip_data) records;
-    mapping (uint32 => domain_data) reverseRecords;
+    address reverse_records_address;
+    reverse_dns reverse_records = reverse_dns(reverse_records_address);
+    mapping (bytes32 => record) records;
 
     // a modifier that make sure some functions can only be called by the owner of the domain
     modifier onlyOwner(bytes32 domain) {
@@ -22,25 +24,28 @@ contract dns {
         _;
     }
 
+    function setReverseRecordsContract(address contractAddress) public {
+        reverse_records_address = contractAddress;
+    }
+
     // create a record
     function createRecord(bytes32 domain, uint32 IP) public {
         require(records[domain].initialized == false);
 
-        records[domain] = ip_data(msg.sender, IP, true);
-        reverseRecords[IP] = domain_data(domain, true);
+        records[domain] = record(msg.sender, IP, true);
+
+        reverse_records.insertRecord(IP, domain);
     }
 
     function getRecord(bytes32 domain) public view returns (uint32) {
         assert(records[domain].initialized);
         return records[domain].IP_address;
     }
-    
-    function getDomain(uint32 IP) public view returns (bytes32) {
-        assert(reverseRecords[IP].initialized);
-        return reverseRecords[IP].domain;
+
+    function getReverseRecord(uint32 IP) public view returns(bytes32) {
+        reverse_records.getRecord(IP);
     }
 
-    // untested
     function transferDomain(bytes32 domain, address userAddress) public onlyOwner(domain) returns(bool){
         records[domain].owner = userAddress;
         return true;
