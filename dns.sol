@@ -1,15 +1,17 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 interface reverse_dns {
-    function getRecord(uint32 ip) external view returns (bytes32);
+    function getRecord(uint64 ip) external view returns (bytes32);
 
-    function insertRecord(uint32 ip, bytes32 domain) external;
+    function insertRecord(uint64 ip, bytes32 domain) external;
+
+    function removeRecord(uint64 ip) external;
 }
 
 contract dns {
     struct record {
         address owner;
-        uint32 IP_address;
+        uint64 IP_address;
         bool initialized; // used to track if this key exist in the map
     }
 
@@ -26,10 +28,11 @@ contract dns {
 
     function setReverseRecordsContract(address contractAddress) public {
         reverse_records_address = contractAddress;
+        reverse_records = reverse_dns(reverse_records_address);
     }
 
     // create a record
-    function createRecord(bytes32 domain, uint32 IP) public {
+    function createRecord(bytes32 domain, uint64 IP) public {
         require(records[domain].initialized == false);
 
         records[domain] = record(msg.sender, IP, true);
@@ -37,13 +40,13 @@ contract dns {
         reverse_records.insertRecord(IP, domain);
     }
 
-    function getRecord(bytes32 domain) public view returns (uint32) {
+    function getRecord(bytes32 domain) public view returns (uint64) {
         assert(records[domain].initialized);
         return records[domain].IP_address;
     }
 
-    function getReverseRecord(uint32 IP) public view returns(bytes32) {
-        reverse_records.getRecord(IP);
+    function getReverseRecord(uint64 IP) public view returns(bytes32) {
+        return reverse_records.getRecord(IP);
     }
 
     function transferDomain(bytes32 domain, address userAddress) public onlyOwner(domain) returns(bool){
@@ -51,7 +54,9 @@ contract dns {
         return true;
     }
 
-    function updateRecord(bytes32 domain, uint32 newIP) public onlyOwner(domain) {
+    function updateRecord(bytes32 domain, uint64 newIP) public onlyOwner(domain) {
+        reverse_records.removeRecord(records[domain].IP_address);
         records[domain].IP_address = newIP;
+        reverse_records.insertRecord(newIP, domain);
     }
 }
