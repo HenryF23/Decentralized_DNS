@@ -5,13 +5,17 @@ contract reverse_dns {
         bytes32 domain;
     }
 
-    mapping (uint32 => reverse_record) reverse_records;
+    mapping (uint64 => reverse_record) reverse_records;
 
-    function getRecord(uint32 ip) public view returns (bytes32) {
-        return reverse_records[ip].domain;
+    function insertRecord(uint64 ip, bytes32 domain) public {
+        reverse_records[ip] = reverse_record(domain);
     }
 
-    function insertRecord(uint32 ip, bytes32 domain) public {
-        reverse_records[ip] = reverse_record(domain);
+    function removeRecord(uint64 ip) public {
+        reverse_records[ip] = reverse_record(0);
+    }
+
+    function getRecord(uint64 ip) public view returns (bytes32) {
+        return reverse_records[ip].domain;
     }
 }
